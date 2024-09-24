@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Code Snippet Manager</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/themes/prism.min.css" rel="stylesheet" />
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+        .add-snippet {
+            background-color: #fff;
+            width: auto;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+        .add-snippet input, .add-snippet textarea {
+            width: 98%;
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 1px solid #0bf73e;
+            border-radius: 3px;
+            font-family: 'Consolas', 'Monaco', 'Andale Mono', 'Ubuntu Mono', monospace;
+        }
+        .add-snippet button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+        .snippets {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 20px;
+        }
+        .snippet-card {
+            background-color: #fff;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            height: 300px;
+            display: flex;
+            flex-direction: column;
+            cursor: move;
+        }
+        .snippet-header {
+            padding: 10px;
+            background-color: #f8f8f8;
+            border-bottom: 1px solid #eee;
+        }
+        .snippet-title {
+            margin: 0;
+            font-size: 18px;
+            color: #333;
+        }
+        .snippet-buttons {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px;
+            background-color: #f8f8f8;
+        }
+        .snippet-buttons button {
+            border: none;
+            padding: 5px 10px;
+            border-radius: 3px;
+            cursor: pointer;
+            color: white;
+        }
+        .copy-btn { background-color: #4CAF50; }
+        .edit-btn { background-color: #2196F3; }
+        .save-btn { background-color: #4CAF50; }
+        .cancel-btn { background-color: #f44336; }
+        .delete-btn { background-color: #f44336; }
+        .save-btn, .cancel-btn {
+            display: none;
+        }
+        .edit-mode .save-btn, .edit-mode .cancel-btn {
+            display: inline-block;
+        }
+        .edit-mode .edit-btn, .edit-mode .delete-btn, .edit-mode .copy-btn {
+            display: none;
+        }
+        .snippet-content {
+            flex-grow: 1;
+            overflow-y: auto;
+            padding: 10px;
+            white-space: pre-wrap;
+            word-break: break-all;
+            font-family: 'Consolas', 'Monaco', 'Andale Mono', 'Ubuntu Mono', monospace;
+            background-color: #f5f5f5;
+        }
+        .edit-mode .snippet-content {
+            display: none;
+        }
+        .edit-mode .edit-area {
+            display: block;
+        }
+        .edit-area {
+            display: none;
+            width: 100%;
+            height: 100%;
+            font-family: 'Consolas', 'Monaco', 'Andale Mono', 'Ubuntu Mono', monospace;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+            padding: 10px;
+            box-sizing: border-box;
+            resize: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Cheat Code Manager</h1>
+        <div class="add-snippet">
+            <input type="text" id="snippet-title" placeholder="Enter snippet title">
+            <textarea id="snippet-content" rows="5" placeholder="Enter your code snippet"></textarea>
+            <button onclick="addSnippet()">Add Snippet</button>
+        </div>
+        <div class="snippets" id="snippets-container"></div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-core.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/plugins/autoloader/prism-autoloader.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.14.0/Sortable.min.js"></script>
+    <script>
+        let snippets = JSON.parse(localStorage.getItem('codeSnippets')) || [];
+        const colors = ['#ffcccb', '#ffdab9', '#e6e6fa', '#98fb98', '#e0ffff', '#fafad2'];
+
+        function renderSnippets() {
+            const container = document.getElementById('snippets-container');
+            container.innerHTML = '';
+            snippets.forEach((snippet, index) => {
+                const card = document.createElement('div');
+                card.className = 'snippet-card';
+                card.style.backgroundColor = colors[index % colors.length];
+                card.dataset.index = index;
+                card.innerHTML = `
+                    <div class="snippet-header">
+                        <h3 class="snippet-title">${snippet.title}</h3>
+                    </div>
+                    <div class="snippet-buttons">
+                        <button class="copy-btn" onclick="copySnippet(${index})">Copy</button>
+                        <button class="edit-btn" onclick="editSnippet(${index})">Edit</button>
+                        <button class="save-btn" onclick="saveSnippet(${index})">Save</button>
+                        <button class="cancel-btn" onclick="cancelEdit(${index})">Cancel</button>
+                        <button class="delete-btn" onclick="deleteSnippet(${index})">Delete</button>
+                    </div>
+                    <pre class="snippet-content"><code class="language-javascript">${escapeHTML(snippet.content)}</code></pre>
+                    <textarea class="edit-area">${snippet.content}</textarea>
+                `;
+                container.appendChild(card);
+            });
+            Prism.highlightAll();
+        }
+
+        function addSnippet() {
+            const title = document.getElementById('snippet-title').value;
+            const content = document.getElementById('snippet-content').value;
+            if (title && content) {
+                snippets.push({ title, content });
+                saveSnippets();
+                renderSnippets();
+                document.getElementById('snippet-title').value = '';
+                document.getElementById('snippet-content').value = '';
+            }
+        }
+
+        function copySnippet(index) {
+            const content = snippets[index].content;
+            navigator.clipboard.writeText(content).then(() => {
+                alert('Snippet copied to clipboard!');
+            });
+        }
+
+        function editSnippet(index) {
+            const card = document.querySelectorAll('.snippet-card')[index];
+            card.classList.add('edit-mode');
+            const editArea = card.querySelector('.edit-area');
+            editArea.style.display = 'block';
+            editArea.focus();
+        }
+
+        function saveSnippet(index) {
+            const card = document.querySelectorAll('.snippet-card')[index];
+            const newContent = card.querySelector('.edit-area').value;
+            snippets[index].content = newContent;
+            saveSnippets();
+            card.classList.remove('edit-mode');
+            renderSnippets();
+        }
+
+        function cancelEdit(index) {
+            const card = document.querySelectorAll('.snippet-card')[index];
+            card.classList.remove('edit-mode');
+            card.querySelector('.edit-area').value = snippets[index].content;
+            renderSnippets();
+        }
+
+        function deleteSnippet(index) {
+            if (confirm('Are you sure you want to delete this snippet?')) {
+                snippets.splice(index, 1);
+                saveSnippets();
+                renderSnippets();
+            }
+        }
+
+        function saveSnippets() {
+            localStorage.setItem('codeSnippets', JSON.stringify(snippets));
+        }
+
+        function escapeHTML(str) {
+            return str.replace(/[&<>'"]/g, 
+                tag => ({
+                    '&': '&amp;',
+                    '<': '&lt;',
+                    '>': '&gt;',
+                    "'": '&#39;',
+                    '"': '&quot;'
+                }[tag] || tag)
+            );
+        }
+
+        function initializeSortable() {
+            new Sortable(document.getElementById('snippets-container'), {
+                animation: 150,
+                ghostClass: 'blue-background-class',
+                onEnd: function (evt) {
+                    const itemEl = evt.item;
+                    const newIndex = evt.newIndex;
+                    const oldIndex = evt.oldIndex;
+                    
+                    // Update the snippets array
+                    const [movedSnippet] = snippets.splice(oldIndex, 1);
+                    snippets.splice(newIndex, 0, movedSnippet);
+                    
+                    // Save the new order
+                    saveSnippets();
+                    
+                    // Re-render to update colors and indices
+                    renderSnippets();
+                }
+            });
+        }
+
+        renderSnippets();
+        initializeSortable();
+    </script>
+</body>
+</html>
