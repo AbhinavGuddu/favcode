@@ -122,11 +122,15 @@
             box-sizing: border-box;
             resize: none;
         }
+        .name {
+    color: darkviolet;
+    font-family: cursive;
+}
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>FavCode Manager</h1>
+        <h1><span class="name" style="color: browns;">Favcode</span> Manager</h1>
         <div class="add-snippet">
             <input type="text" id="snippet-title" placeholder="Enter snippet title">
             <textarea id="snippet-content" rows="5" placeholder="Enter your code snippet"></textarea>
@@ -261,5 +265,6 @@
         renderSnippets();
         initializeSortable();
     </script>
+    <marquee><span class="developer-info"><span class="label">🎉Developed By :</span> <span class="name">👨‍💻 Abhinav Guddu</span></span></marquee>
 </body>
 </html>
